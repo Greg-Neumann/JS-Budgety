@@ -212,8 +212,9 @@ var controller = (function (budgetCtrl, UICtrl) {
       UICtrl.addListItem(itemAdded, newItem.type)
       let budgetTotals = budgetCtrl.updateBudget(newItem)
       UICtrl.displayTotals(newItem,budgetTotals)
+      UICtrl.clearFields()
     }
-    UICtrl.clearFields()
+    
   }
 
   let setUpEventListeners = function () {
