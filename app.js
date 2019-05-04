@@ -152,7 +152,7 @@ var UIController = (function () {
         year = now.getFullYear()    // Obtain the integer year number
         document.getElementById(DOMStrings.budgetMonthValueID).textContent = months[month] + ' ' + year;
       }
-      //TODO: Work out why element.value works for the first 2 elements, but not the third. That needs to be textContent
+      //
       // This uses a NodeList.prototype.Foreach as per http://developer.mozilla.org/en-US/docs/Web/API/NodeList/forEach
       //
       document.querySelectorAll(
@@ -185,6 +185,9 @@ var UIController = (function () {
       }
     },
     displayTotals: function (objToAdd,tots) {
+      //
+      // Update the UI to the model for the header fields (budget totals)
+      //
       switch (objToAdd.type) {
         case 'inc' :
           document.getElementById(DOMStrings.budgetIncomeValueID).textContent = tots.income
@@ -204,10 +207,12 @@ var controller = (function (budgetCtrl, UICtrl) {
   'use strict'
   let ctrlAddItem = function () {
     let newItem = UICtrl.getInput()
-    let itemAdded = budgetCtrl.addItem(newItem.type, newItem.description, newItem.amount)
-    UICtrl.addListItem(itemAdded, newItem.type)
-    let budgetTotals = budgetCtrl.updateBudget(newItem)
-    UICtrl.displayTotals(newItem,budgetTotals)
+    if (newItem.amount != '' && newItem.description != '') {
+      let itemAdded = budgetCtrl.addItem(newItem.type, newItem.description, newItem.amount)
+      UICtrl.addListItem(itemAdded, newItem.type)
+      let budgetTotals = budgetCtrl.updateBudget(newItem)
+      UICtrl.displayTotals(newItem,budgetTotals)
+    }
     UICtrl.clearFields()
   }
 
