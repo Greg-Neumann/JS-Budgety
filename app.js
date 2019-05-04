@@ -92,6 +92,10 @@ var UIController = (function () {
     budgetValue: '.budget__value',
     budgetIncomeValueID: 'budget_income_value',
     budgetExpenseValueID: 'budget_expense_value',
+    budgetMonthValueID: 'budget_month_value',
+    budgetValueID : 'budget_value',
+    budgetExpensesPercentageValueID : 'budget_expenses_percentage_value',
+
     //
     // The following HTML snippets were copied from the raw HTML file as a model and placeholders '%%' created where data was to be inserted
     //
@@ -116,7 +120,7 @@ var UIController = (function () {
           break
       }
       //
-      // Replace the placeholder test with some the data to add
+      // Replace the placeholder text with some of the data to add
       //
       editedHTML = htmlString.replace('%id%', objToAdd.id)
       editedHTML = editedHTML.replace('%description%', objToAdd.description)
@@ -131,6 +135,18 @@ var UIController = (function () {
       //
       // clear the 2 input fields and the expense, income and the total fields
       //
+      function setDisplayMonth () {
+        //
+        // Work out display month and year
+        //
+        let now, months, month, year
+        //
+        months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        now = new Date()            // get the current date
+        month = now.getMonth()      // Obtain the month index
+        year = now.getFullYear()    // Obtain the integer year number
+        document.getElementById(DOMStrings.budgetMonthValueID).textContent = months[month] + ' ' + year;
+      }
       //TODO: Work out why element.value works for the first 2 elements, but not the third. That needs to be textContent
       // This uses a NodeList.prototype.Foreach as per http://developer.mozilla.org/en-US/docs/Web/API/NodeList/forEach
       //
@@ -142,6 +158,9 @@ var UIController = (function () {
       })
       document.getElementById(DOMStrings.budgetIncomeValueID).textContent = 0
       document.getElementById(DOMStrings.budgetExpenseValueID).textContent = 0
+      document.getElementById(DOMStrings.budgetValueID).textContent = 0
+      document.getElementById(DOMStrings.budgetExpensesPercentageValueID).textContent = 0
+      setDisplayMonth()
       //
       // set focus on the description field - this causes a second DOM select so might not be best.
       //
@@ -180,7 +199,6 @@ var controller = (function (budgetCtrl, UICtrl) {
     let newItem = UICtrl.getInput()
     let itemAdded = budgetCtrl.addItem(newItem.type, newItem.description, newItem.amount)
     UICtrl.addListItem(itemAdded, newItem.type)
-    UICtrl.clearFields()  //TODO: move this to ensure opening position is a clear board
     let budgetTotals = budgetCtrl.updateBudget(newItem)
     UICtrl.displayTotals(newItem,budgetTotals)
   }
@@ -202,6 +220,7 @@ var controller = (function (budgetCtrl, UICtrl) {
 
   return {
     init: function () {
+      UICtrl.clearFields()  //TODO: move this to ensure opening position is a clear board
       setUpEventListeners()
     }
   }
