@@ -1,3 +1,6 @@
+//
+// Declare an IIFE an the Model
+//
 var budgetController = (function () {
   'use strict'
   //
@@ -76,7 +79,9 @@ var budgetController = (function () {
     },
   }
 }())
-
+//
+// Declare an IIFE as the UI Controller
+//
 var UIController = (function () {
   'use strict'
   //
@@ -192,7 +197,9 @@ var UIController = (function () {
     }
   }
 }())
-
+//
+// Declare an IIFE as the app Controller 
+//
 var controller = (function (budgetCtrl, UICtrl) {
   'use strict'
   let ctrlAddItem = function () {
@@ -201,6 +208,7 @@ var controller = (function (budgetCtrl, UICtrl) {
     UICtrl.addListItem(itemAdded, newItem.type)
     let budgetTotals = budgetCtrl.updateBudget(newItem)
     UICtrl.displayTotals(newItem,budgetTotals)
+    UICtrl.clearFields()
   }
 
   let setUpEventListeners = function () {
