@@ -220,7 +220,7 @@ var controller = (function (budgetCtrl, UICtrl) {
 
   return {
     init: function () {
-      UICtrl.clearFields()  //TODO: move this to ensure opening position is a clear board
+      UICtrl.clearFields()
       setUpEventListeners()
     }
   }
