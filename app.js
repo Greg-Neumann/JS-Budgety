@@ -65,16 +65,17 @@ var budgetController = (function () {
         // e.g. start with '12' entered gets stored in dataModel as '012'. Then add '12' and it produces '01212' unless the parseFloat is present
         //
         case 'inc' :
-          dataModel.totals.income += parseFloat(objToAdd.amount) 
+          dataModel.totals.income += parseFloat(objToAdd.amount) * 100 // work in pence
           break
         case 'exp' :
-          dataModel.totals.expense += parseFloat(objToAdd.amount)
+          dataModel.totals.expense += parseFloat(objToAdd.amount) * 100 // work in pence
           break
       }
       return {
         income: dataModel.totals.income,
         expense: dataModel.totals.expense,
-        balance: dataModel.totals.income - dataModel.totals.expense
+        balance: Math.round(dataModel.totals.income - dataModel.totals.expense),
+        expensePercentage: (dataModel.totals.expense / dataModel.totals.income * 100).toFixed(0)
       }
     },
   }
@@ -100,6 +101,7 @@ var UIController = (function () {
     budgetMonthValueID: 'budget_month_value',
     budgetValueID : 'budget_value',
     budgetExpensesPercentageValueID : 'budget_expenses_percentage_value',
+    errorMessage: '.error__message',
 
     //
     // The following HTML snippets were copied from the raw HTML file as a model and placeholders '%%' created where data was to be inserted
@@ -136,6 +138,12 @@ var UIController = (function () {
       selector = (type === 'inc' ? DOMStrings.incomeList : DOMStrings.expenseList)
       document.querySelector(selector).insertAdjacentHTML('beforeend', editedHTML)
     },
+    clearInputFields: function (){
+      document.querySelectorAll(
+        `${DOMStrings.inputDescription},
+        ${DOMStrings.inputAmount},
+        ${DOMStrings.errorMessage}`).forEach(element => element.innerHTML = '')
+    },
     clearFields: function () {
       //
       // clear the 2 input fields and the expense, income and the total fields
@@ -152,19 +160,12 @@ var UIController = (function () {
         year = now.getFullYear()    // Obtain the integer year number
         document.getElementById(DOMStrings.budgetMonthValueID).textContent = months[month] + ' ' + year;
       }
-      //
-      // This uses a NodeList.prototype.Foreach as per http://developer.mozilla.org/en-US/docs/Web/API/NodeList/forEach
-      //
-      document.querySelectorAll(
-        `${DOMStrings.inputDescription},
-        ${DOMStrings.inputAmount},
-        ${DOMStrings.budgetValue}`).forEach(element => {
-        element.value = ''
-      })
       document.getElementById(DOMStrings.budgetIncomeValueID).textContent = 0
       document.getElementById(DOMStrings.budgetExpenseValueID).textContent = 0
       document.getElementById(DOMStrings.budgetValueID).textContent = 0
       document.getElementById(DOMStrings.budgetExpensesPercentageValueID).textContent = 0
+      document.getElementById(DOMStrings.budgetValueID).textContent = 0
+      UIController.clearInputFields()
       setDisplayMonth()
       //
       // set focus on the description field - this causes a second DOM select so might not be best.
@@ -190,13 +191,17 @@ var UIController = (function () {
       //
       switch (objToAdd.type) {
         case 'inc' :
-          document.getElementById(DOMStrings.budgetIncomeValueID).textContent = tots.income
+          document.getElementById(DOMStrings.budgetIncomeValueID).textContent = tots.income / 100 
           break
         case 'exp' :
-          document.getElementById(DOMStrings.budgetExpenseValueID).textContent = tots.expense
+          document.getElementById(DOMStrings.budgetExpenseValueID).textContent = tots.expense / 100
           break
       }
-      document.querySelector(DOMStrings.budgetValue).textContent = tots.balance
+      document.querySelector(DOMStrings.budgetValue).textContent = tots.balance / 100
+      document.getElementById(DOMStrings.budgetExpensesPercentageValueID).textContent = tots.expensePercentage
+    },
+    setErrorMessage: function (text) {
+      document.querySelector(DOMStrings.errorMessage).textContent = text
     }
   }
 }())
@@ -205,14 +210,22 @@ var UIController = (function () {
 //
 var controller = (function (budgetCtrl, UICtrl) {
   'use strict'
+  let inputValueValid = function (input) {
+    return (input  - (Math.floor(input * 100) / 100) == 0)
+  } 
   let ctrlAddItem = function () {
     let newItem = UICtrl.getInput()
     if (newItem.amount != '' && newItem.description != '') {
-      let itemAdded = budgetCtrl.addItem(newItem.type, newItem.description, newItem.amount)
-      UICtrl.addListItem(itemAdded, newItem.type)
-      let budgetTotals = budgetCtrl.updateBudget(newItem)
-      UICtrl.displayTotals(newItem,budgetTotals)
-      UICtrl.clearFields()
+      if (inputValueValid(newItem.amount)) {
+        let itemAdded = budgetCtrl.addItem(newItem.type, newItem.description, newItem.amount)
+        UICtrl.addListItem(itemAdded, newItem.type)
+        let budgetTotals = budgetCtrl.updateBudget(newItem)
+        UICtrl.clearInputFields()
+        UICtrl.displayTotals(newItem,budgetTotals)
+      }
+      else {
+        UICtrl.setErrorMessage('Only pounds and pence can be entered')
+      }
     }
     
   }

@@ -62,7 +62,11 @@ body {
     margin-bottom: 25px;
     letter-spacing: 2px;
 }
-
+.error__message {
+    font-weight: 200;
+    color: rgb(236, 58, 58);
+    text-align: center;
+}
 .budget__income,
 .budget__expenses {
     padding: 12px;
