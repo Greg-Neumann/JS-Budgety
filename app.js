@@ -75,7 +75,7 @@ var budgetController = (function () {
         income: dataModel.totals.income,
         expense: dataModel.totals.expense,
         balance: Math.round(dataModel.totals.income - dataModel.totals.expense),
-        expensePercentage: (dataModel.totals.expense / dataModel.totals.income * 100).toFixed(0)
+        expensePercentage: dataModel.totals.income > 0 ? (dataModel.totals.expense / dataModel.totals.income * 100).toFixed(0) : 0
       }
     },
   }
