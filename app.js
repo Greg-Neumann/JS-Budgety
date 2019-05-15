@@ -55,6 +55,28 @@ var budgetController = (function () {
 
       return newItem
     },
+    delItem: function (type, id) {
+      let itemDeleted;
+      switch (type) {
+        case 'inc' :
+          itemDeleted = dataModel.income[id - 1]
+          dataModel.income.splice(id - 1,1)        // remove one item from the array
+          dataModel.totals.income -= itemDeleted.value * 100
+          break;
+        case 'exp' :
+          itemDeleted = dataModel.expense[id - 1]
+          dataModel.expense.splice[id - 1,1]       // remove one item from the array
+          dataModel.totals.expense -= itemDeleted.value * 100
+          break
+      }
+      return {
+        income: dataModel.totals.income,
+        expense: dataModel.totals.expense,
+        balance: Math.round(dataModel.totals.income - dataModel.totals.expense),
+        expensePercentage: dataModel.totals.income > 0 ? (dataModel.totals.expense / dataModel.totals.income * 100).toFixed(0) : 0
+      }
+      
+    },
     showModel: function () {
       console.log(dataModel)
     },
@@ -93,6 +115,7 @@ var UIController = (function () {
     inputDescription: '.add__description',
     inputAmount: '.add__value',
     inputButton: '.add__btn',
+    container: '.container', // contains all the expenses and income items
     incomeList: '.income__list',
     expenseList: '.expenses__list',
     budgetValue: '.budget__value',
@@ -138,12 +161,29 @@ var UIController = (function () {
       selector = (type === 'inc' ? DOMStrings.incomeList : DOMStrings.expenseList)
       document.querySelector(selector).insertAdjacentHTML('beforeend', editedHTML)
     },
+    delListItem: function (type,tots,id){
+      let element = document.getElementById(id)
+      //
+      // to remove a node, use the removeChild method ON the parent node but you also need to re-select the child note!
+      //
+      element.parentNode.removeChild(element)
+      //
+      // update the budget header fields
+      //
+      this.displayTotals(type,tots)
+    },
     clearInputFields: function (){
+    /*
+      querySelectorALL correctly returns all 3 DOM elements for inputDescription, inputAmount & errorMessage when all 3 are passed in the templated string.
+      However, the attribute that contains the value that needs to be cleared is 'value' in the 1st 2 cases but 'textcontent' in the last case. 
+      This is why the error message is cleared by the second method below
+    */
       document.querySelectorAll(
         `${DOMStrings.inputDescription},
-        ${DOMStrings.inputAmount},
-        ${DOMStrings.errorMessage}`).forEach(element => element.innerHTML = '')
-    },
+        ${DOMStrings.inputAmount}`).forEach(element => element.value = '')
+      //
+      document.querySelector(DOMStrings.errorMessage).textContent = ''
+    }, 
     clearFields: function () {
       //
       // clear the 2 input fields and the expense, income and the total fields
@@ -185,11 +225,11 @@ var UIController = (function () {
         amount: document.querySelector(DOMStrings.inputAmount).value
       }
     },
-    displayTotals: function (objToAdd,tots) {
+    displayTotals: function (type,tots) {
       //
       // Update the UI to the model for the header fields (budget totals)
       //
-      switch (objToAdd.type) {
+      switch (type) {
         case 'inc' :
           document.getElementById(DOMStrings.budgetIncomeValueID).textContent = tots.income / 100 
           break
@@ -221,13 +261,39 @@ var controller = (function (budgetCtrl, UICtrl) {
         UICtrl.addListItem(itemAdded, newItem.type)
         let budgetTotals = budgetCtrl.updateBudget(newItem)
         UICtrl.clearInputFields()
-        UICtrl.displayTotals(newItem,budgetTotals)
+        UICtrl.displayTotals(newItem.type,budgetTotals)
       }
       else {
         UICtrl.setErrorMessage('Only pounds and pence can be entered')
       }
     }
-    
+  }
+  let ctrlDelItem = function(event) {
+    //
+    // NOTE that the passed single parameter is NOT explictely stated on the caller (LOL)
+    //
+    // traverse the DOM up 4 levels to ensure that the 4th Parent is either an Income or and Expense container
+    // This EXPLICIT dependency of exactly 4 levels is 'as bad' as hard-coding the HTML structure in incomeItem/expenseItem in UIController
+    //
+    let selectedID = event.target.parentNode.parentNode.parentNode.parentNode.id
+    let typeArray = selectedID.split('-')
+    let type = typeArray[0]
+    if (type === 'income' || type === 'expense') {
+      //
+      // We have pressed on a child element where the 4th parent is either an income or an expense container. And
+      // selectedID is the DOM ID of the element that needs to be removed.
+      //
+      let ID = typeArray[1]
+      //
+      // Delete the selected item from the model
+      //
+      let budgetTotals =  budgetCtrl.delItem(type == 'income' ? 'inc' : 'exp',ID)
+      //
+      // update the UI 
+      //
+      UICtrl.delListItem(type == 'income' ? 'inc' : 'exp',budgetTotals,selectedID)
+      UICtrl.clearInputFields()
+    }
   }
 
   let setUpEventListeners = function () {
@@ -243,6 +309,12 @@ var controller = (function (budgetCtrl, UICtrl) {
         ctrlAddItem()
       }
     })
+    //
+    // Use Event delegation to catch any clicks on the delete item button because:
+    // 1) There are lots of items in the DOM to delete (many events to set up...and catch) and
+    // 2) The items to delete have YET (from this point in the code) to be inserted into the DOM
+    //
+    document.querySelector(UICtrl.getDOMStrings().container).addEventListener('click',ctrlDelItem)
   }
 
   return {
