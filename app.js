@@ -6,10 +6,11 @@ var budgetController = (function () {
   //
   // function constructor for each data item in the model
   //
-  let Expense = function (id, description, value) {
+  let Expense = function (id, description, value, percentage) {
     this.id = id
     this.description = description
     this.value = value
+    this.percentage = percentage
   }
 
   let Income = function (id, description, value) {
@@ -46,9 +47,9 @@ var budgetController = (function () {
           if (dataModel.expense.length === 0) {
             ID = 1 // initialise first entry as 1
           } else {
-            ID = dataModel.expense[dataModel.income.length - 1].id + 1
+            ID = dataModel.expense[dataModel.expense.length - 1].id + 1
           }
-          newItem = new Expense(ID, desc, val)
+          newItem = new Expense(ID, desc, val, 0) // expense percentage is calculated later in updateBudget ....
           dataModel.expense.push(newItem)
           break
       }
@@ -60,12 +61,12 @@ var budgetController = (function () {
       switch (type) {
         case 'inc' :
           itemDeleted = dataModel.income[id - 1]
-          dataModel.income.splice(id - 1,1)        // remove one item from the array
+          dataModel.income.splice(id - 1,1)       // remove one item from the array
           dataModel.totals.income -= itemDeleted.value * 100
           break;
         case 'exp' :
           itemDeleted = dataModel.expense[id - 1]
-          dataModel.expense.splice[id - 1,1]       // remove one item from the array
+          dataModel.expense.splice(id - 1,1)       // remove one item from the array
           dataModel.totals.expense -= itemDeleted.value * 100
           break
       }
@@ -80,7 +81,19 @@ var budgetController = (function () {
     showModel: function () {
       console.log(dataModel)
     },
-    updateBudget: function (objToAdd) {
+    getExpenses: function () {
+       return dataModel.expense
+    },
+    calculateExpenseItems() {
+      /*
+      Calculate into the model the % expense items which need re-calculating whenever any item is added or deleted
+      */
+      let i;
+      for (i = 0;  i <dataModel.expense.length; i++){
+        dataModel.expense[i].percentage = dataModel.expense[i].value / dataModel.totals.expense * 100 * 100
+      }
+    },
+    updateBudget: function (objToAdd) {     
       switch (objToAdd.type) {
         //
         // need to parseFloat to stop leading zero appearing on addition which then causes ensuing numbers to be concatentated as a string
@@ -91,6 +104,10 @@ var budgetController = (function () {
           break
         case 'exp' :
           dataModel.totals.expense += parseFloat(objToAdd.amount) * 100 // work in pence
+          //
+          // Need to re-calculate all the expense % items as a new expense has been added
+          //
+          this.calculateExpenseItems()
           break
       }
       return {
@@ -125,12 +142,13 @@ var UIController = (function () {
     budgetValueID : 'budget_value',
     budgetExpensesPercentageValueID : 'budget_expenses_percentage_value',
     errorMessage: '.error__message',
+    BudgetExpenseItemPercentageValueID : 'item__percentage-', // ID number to be added to end of string, starting from 0
 
     //
     // The following HTML snippets were copied from the raw HTML file as a model and placeholders '%%' created where data was to be inserted
     //
     incomeItem: '<div class="item clearfix" id="income-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%amount%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>',
-    expenseItem: '<div class="item clearfix" id="expense-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%amount%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>'
+    expenseItem: '<div class="item clearfix" id="expense-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%amount%</div><div class="item__percentage" id="item__percentage-%id%">%item__percentage%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>'
   }
   //
   // Public API
@@ -152,16 +170,17 @@ var UIController = (function () {
       //
       // Replace the placeholder text with some of the data to add
       //
-      editedHTML = htmlString.replace('%id%', objToAdd.id)
+      editedHTML = htmlString.replace(/%id%/g, objToAdd.id) // global string modifier as 2 ids to replace
       editedHTML = editedHTML.replace('%description%', objToAdd.description)
-      editedHTML = editedHTML.replace('%amount%', objToAdd.value)
+      editedHTML = editedHTML.replace('%amount%',this.formatNumber(objToAdd.value))
+      editedHTML = editedHTML.replace('%item__percentage%', objToAdd.percentage)
       //
       // Insert the HTML into the DOM
       //
       selector = (type === 'inc' ? DOMStrings.incomeList : DOMStrings.expenseList)
       document.querySelector(selector).insertAdjacentHTML('beforeend', editedHTML)
     },
-    delListItem: function (type,tots,id){
+    delListItem: function (type,tots,id,exps){
       let element = document.getElementById(id)
       //
       // to remove a node, use the removeChild method ON the parent node but you also need to re-select the child note!
@@ -170,7 +189,7 @@ var UIController = (function () {
       //
       // update the budget header fields
       //
-      this.displayTotals(type,tots)
+      this.displayTotals(type,tots,exps)
     },
     clearInputFields: function (){
     /*
@@ -215,6 +234,12 @@ var UIController = (function () {
     getDOMStrings: function () {
       return DOMStrings
     },
+    formatNumber: function (numberToFormat, numberType){
+      let result, temp;
+      temp = Intl.NumberFormat(undefined,{ style: 'currency', currency: 'GBP' }); // use international number formats (so '1000' => '1,000')
+      result = temp.format(numberToFormat)
+      return result
+    },
     getInput: function () {
       //
       // Get the type of expenditure, the textural description and the amount (number)
@@ -225,20 +250,37 @@ var UIController = (function () {
         amount: document.querySelector(DOMStrings.inputAmount).value
       }
     },
-    displayTotals: function (type,tots) {
+    displayTotals: function (type,tots,expenses) {
       //
       // Update the UI to the model for the header fields (budget totals)
+      // Force refresh of the DOM fields for the expense items percentages in each detail line
       //
       switch (type) {
         case 'inc' :
-          document.getElementById(DOMStrings.budgetIncomeValueID).textContent = tots.income / 100 
+          document.getElementById(DOMStrings.budgetIncomeValueID).textContent = this.formatNumber( tots.income / 100 )
           break
         case 'exp' :
-          document.getElementById(DOMStrings.budgetExpenseValueID).textContent = tots.expense / 100
+          document.getElementById(DOMStrings.budgetExpenseValueID).textContent = this.formatNumber( tots.expense / 100)
           break
       }
-      document.querySelector(DOMStrings.budgetValue).textContent = tots.balance / 100
+      document.querySelector(DOMStrings.budgetValue).textContent = this.formatNumber(tots.balance / 100,type)
       document.getElementById(DOMStrings.budgetExpensesPercentageValueID).textContent = tots.expensePercentage
+      //
+      // Re-display all those expense detail percentages
+      //
+      this.displayExpensePercentage(expenses)
+
+    },
+    displayExpensePercentage: function (exps) {
+      /*
+      As the expense percentages, adjacent to each expense item, change upon every change (addition, deletion) to the data model,
+      we need to re-populate the DOM with these re-calculated values
+      */
+      let i, selector;
+      for (i = 0 ; i < exps.length; i++ ) {
+        selector = 'item__percentage-' + exps[i].id
+        document.getElementById(selector).textContent = (exps[i].percentage).toFixed(0)
+      }
     },
     setErrorMessage: function (text) {
       document.querySelector(DOMStrings.errorMessage).textContent = text
@@ -258,10 +300,11 @@ var controller = (function (budgetCtrl, UICtrl) {
     if (newItem.amount != '' && newItem.description != '') {
       if (inputValueValid(newItem.amount)) {
         let itemAdded = budgetCtrl.addItem(newItem.type, newItem.description, newItem.amount)
-        UICtrl.addListItem(itemAdded, newItem.type)
         let budgetTotals = budgetCtrl.updateBudget(newItem)
+        UICtrl.addListItem(itemAdded, newItem.type)
         UICtrl.clearInputFields()
-        UICtrl.displayTotals(newItem.type,budgetTotals)
+        let expenses = budgetCtrl.getExpenses() // returns a list of all expense fields
+        UICtrl.displayTotals(newItem.type,budgetTotals, expenses)
       }
       else {
         UICtrl.setErrorMessage('Only pounds and pence can be entered')
@@ -288,11 +331,14 @@ var controller = (function (budgetCtrl, UICtrl) {
       // Delete the selected item from the model
       //
       let budgetTotals =  budgetCtrl.delItem(type == 'income' ? 'inc' : 'exp',ID)
+      let expenses = budgetCtrl.getExpenses() // returns a list of all expense fields
       //
       // update the UI 
       //
-      UICtrl.delListItem(type == 'income' ? 'inc' : 'exp',budgetTotals,selectedID)
+      UICtrl.delListItem(type == 'income' ? 'inc' : 'exp',budgetTotals,selectedID,expenses)
       UICtrl.clearInputFields()
+      budgetCtrl.calculateExpenseItems() // re-calculate expense percentatges in the budget
+      UICtrl.displayExpensePercentage(expenses) // allow for changed expense percentages
     }
   }
 
