@@ -361,6 +361,12 @@ var controller = (function (budgetCtrl, UICtrl) {
     // 2) The items to delete have YET (from this point in the code) to be inserted into the DOM
     //
     document.querySelector(UICtrl.getDOMStrings().container).addEventListener('click',ctrlDelItem)
+    /*
+    Event listener to wait for a change in the input type field (income or expense about to be entered)
+    ==> omitted!
+    
+    document.querySelector(UICtrl.getDOMStrings().inputType).addEventListener('change',UICtrl.changeType)
+        */
   }
 
   return {
