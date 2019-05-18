@@ -87,6 +87,7 @@ var budgetController = (function () {
     calculateExpenseItems() {
       /*
       Calculate into the model the % expense items which need re-calculating whenever any item is added or deleted
+      TODO: This shows poor Object Design. This functionality should be associated with the Data Model Object as a method
       */
       let i;
       for (i = 0;  i <dataModel.expense.length; i++){
